@@ -499,6 +499,7 @@ svg.big{width:128px;height:128px;display:block}
     </div>
     <p id="doneNote">Now go text me your answer so I know this thing actually worked.</p>
     <p class="eyebrow" id="bonus" style="display:none"></p>
+    <button class="link show" id="again" type="button">Do it again</button>
   </div>
 </div>
 
@@ -1084,6 +1085,13 @@ svg.big{width:128px;height:128px;display:block}
       : "There were four little penguins hidden back there. You found " + S.eggs.length + ".";
     $("done").classList.add("open");
   }
+
+  /* saved progress is what lets her close the page and come back, but it also
+     means a refresh lands her right back on the finale: this is the way out */
+  $("again").addEventListener("click", function () {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    location.reload();
+  });
 
   /* ---------------- boot ---------------- */
   applyCamera(OVERVIEW);

@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A Penguin Needs Your Help</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Fredoka:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:light}
+html,body{margin:0;padding:0}
+body{font:14px system-ui,-apple-system,Segoe UI,sans-serif;background:#DCE8EF}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<style>
+:root{
+  --ink:#16202D;
+  --ink-2:#4A5C6E;
+  --paper:#F4F8FA;
+  --void:#DCE8EF;
+  --accent:#EF4E37;
+  --accent-2:#F2B33D;
+  --sea:#2FB6C0;
+  --ok:#2E9E6B;
+  --disp:"Fredoka","Trebuchet MS",Verdana,sans-serif;
+  --util:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --hud:min(232px,34dvh);
+}
+*{box-sizing:border-box}
+#app{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  background:var(--void);color:var(--ink);
+  font-family:var(--util);overflow:hidden;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+#app::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(circle,rgba(22,32,45,.09) 1.2px,transparent 1.2px);
+  background-size:26px 26px;
+}
+
+/* ---------- camera ---------- */
+#viewport{position:relative;flex:1 1 auto;overflow:hidden;z-index:1}
+#world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;will-change:transform;
+  transition:transform 1700ms cubic-bezier(.7,.02,.24,1)}
+.scene{position:absolute;width:1000px;height:700px;transform-origin:50% 50%;
+  border-radius:30px;overflow:hidden;box-shadow:0 26px 64px rgba(22,32,45,.22)}
+.scene svg.art{display:block;width:100%;height:100%}
+.tag{position:absolute;left:28px;top:24px;font-family:var(--util);font-weight:700;
+  font-size:20px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink);
+  background:#fff;padding:10px 18px;border-radius:999px;box-shadow:0 4px 0 var(--ink)}
+
+.egg{position:absolute;border:0;padding:0;background:none;cursor:pointer;
+  transform-origin:50% 50%;transition:transform .3s ease,opacity .35s ease}
+.egg svg{width:100%;height:100%;display:block}
+.egg:focus-visible{outline:5px solid var(--accent);outline-offset:7px;border-radius:8px}
+.egg.got{transform:scale(1.7);opacity:0;pointer-events:none}
+
+/* ---------- HUD ---------- */
+#hud{
+  position:relative;z-index:3;flex:0 0 auto;min-height:var(--hud);
+  background:var(--paper);border-top:3px solid var(--ink);
+  box-shadow:0 -14px 34px rgba(22,32,45,.14);
+  padding:14px 18px calc(16px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;gap:10px;
+}
+.hudtop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.meta{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:9px}
+.pips{display:flex;gap:5px;align-items:center}
+.pip{width:9px;height:9px;border-radius:50%;border:2px solid var(--ink-2);background:transparent}
+.pip.on{background:var(--accent);border-color:var(--accent)}
+.pip.now{background:var(--ink);border-color:var(--ink);transform:scale(1.3)}
+.found{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.found svg{width:16px;height:16px;display:block}
+
+.clue{font-family:var(--disp);font-weight:500;font-size:clamp(19px,5.1vw,25px);line-height:1.22;
+  text-wrap:balance;margin:0}
+.row{display:flex;gap:9px;align-items:stretch}
+#answer{
+  flex:1 1 auto;min-width:0;font-family:var(--disp);font-size:17px;font-weight:500;color:var(--ink);
+  background:#fff;border:2.5px solid var(--ink);border-radius:12px;padding:13px 14px;min-height:50px;
+}
+#answer::placeholder{color:#9BAAB6;font-weight:400}
+#answer:focus{outline:none;box-shadow:0 0 0 4px rgba(239,78,55,.28);border-color:var(--accent)}
+.btn{
+  font-family:var(--disp);font-weight:600;font-size:17px;color:#fff;background:var(--accent);
+  border:2.5px solid var(--ink);border-radius:12px;padding:13px 20px;min-height:50px;cursor:pointer;
+  box-shadow:0 4px 0 var(--ink);transition:transform .1s ease,box-shadow .1s ease;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+.btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.wide{width:100%}
+.choices{display:none;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.choices.on{display:grid}
+.choice{
+  font-family:var(--disp);font-weight:500;font-size:15px;line-height:1.15;color:var(--ink);
+  background:#fff;border:2.5px solid var(--ink);border-radius:12px;padding:10px 8px;
+  min-height:54px;cursor:pointer;text-align:center;text-wrap:balance;
+  box-shadow:0 4px 0 var(--ink);transition:transform .1s ease,box-shadow .1s ease,
+  background .25s ease,color .25s ease,border-color .25s ease;
+}
+.choice:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+.choice:focus-visible{outline:4px solid var(--accent);outline-offset:3px}
+.choice.wrong{
+  background:#FBE2DC;color:#9C3B2A;border-color:var(--accent);
+  box-shadow:0 0 0 var(--ink);transform:translateY(4px);
+  text-decoration:line-through;cursor:default;pointer-events:none;
+}
+.choice.right{background:var(--ok);color:#fff;border-color:var(--ink);pointer-events:none}
+.helpers{display:flex;gap:14px;min-height:20px;align-items:center;flex-wrap:wrap}
+.link{
+  font-family:var(--util);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  background:none;border:0;border-bottom:2px solid var(--accent);color:var(--ink-2);padding:2px 0;
+  cursor:pointer;opacity:0;pointer-events:none;transition:opacity .4s ease;
+}
+.link.show{opacity:1;pointer-events:auto}
+.link:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.say{font-family:var(--disp);font-size:14.5px;font-weight:500;min-height:20px;color:var(--accent);margin:0}
+.say.good{color:var(--ok)}
+.say.note{color:var(--ink-2)}
+
+#stamp{
+  position:absolute;right:20px;top:-28px;z-index:5;pointer-events:none;
+  font-family:var(--util);font-weight:700;font-size:19px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent);border:4px solid var(--accent);border-radius:8px;padding:6px 12px;
+  background:rgba(255,255,255,.88);opacity:0;transform:rotate(-16deg) scale(2.6);
+}
+#stamp.hit{animation:slam .55s cubic-bezier(.2,1.5,.4,1) forwards}
+@keyframes slam{
+  0%{opacity:0;transform:rotate(-16deg) scale(2.6)}
+  60%{opacity:1;transform:rotate(-16deg) scale(.92)}
+  100%{opacity:1;transform:rotate(-16deg) scale(1)}
+}
+
+/* ---------- overlays ---------- */
+.panel{
+  position:absolute;inset:0;z-index:10;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;padding:26px 22px;
+  background:var(--paper);overflow-y:auto;
+}
+.panel.open{display:flex}
+.panel h1{font-family:var(--disp);font-weight:600;font-size:clamp(26px,7.4vw,38px);line-height:1.1;
+  margin:0;text-align:center;text-wrap:balance}
+.panel p{font-family:var(--disp);font-weight:400;font-size:16.5px;line-height:1.45;margin:0;
+  text-align:center;max-width:34ch;color:var(--ink-2)}
+.eyebrow{font-family:var(--util);font-size:11px;font-weight:700;letter-spacing:.26em;
+  text-transform:uppercase;color:var(--ink-2);margin:0;text-align:center}
+
+#gate{background:rgba(244,248,250,.84);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#gate .gatecard{width:100%;max-width:400px;display:flex;flex-direction:column;gap:13px;align-items:center}
+svg.big{width:128px;height:128px;display:block}
+#gateSay{min-height:46px;text-align:center;font-family:var(--disp);font-size:16px;color:var(--accent);
+  margin:0;max-width:30ch;line-height:1.35}
+#gateName{
+  width:100%;text-align:center;font-family:var(--disp);font-size:19px;font-weight:500;color:var(--ink);
+  background:#fff;border:2.5px solid var(--ink);border-radius:12px;padding:14px;min-height:54px;
+}
+#gateName:focus{outline:none;box-shadow:0 0 0 4px rgba(239,78,55,.28);border-color:var(--accent)}
+
+#paintwrap{display:flex;flex-direction:column;align-items:center;gap:11px;width:100%}
+#grid{
+  display:grid;gap:2px;background:var(--ink);padding:4px;border-radius:10px;
+  border:3px solid var(--ink);width:min(344px,88vw);touch-action:none;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+}
+#hud.slim{min-height:0}
+#paint{padding:16px 18px}
+.cell{aspect-ratio:1;background:#fff;display:flex;align-items:center;justify-content:center;
+  font-family:var(--util);font-size:13px;font-weight:700;color:#9BAAB6;user-select:none;
+  cursor:pointer;touch-action:none}
+.cell.done{color:transparent;cursor:default}
+.palette{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.swatch{width:54px;height:54px;border-radius:12px;border:3px solid var(--ink);cursor:pointer;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;
+  font-family:var(--util);font-size:12px;font-weight:700;color:var(--ink);
+  box-shadow:0 4px 0 var(--ink);transition:transform .12s ease,box-shadow .12s ease}
+.swatch[aria-pressed="true"]{transform:translateY(4px);box-shadow:0 0 0 var(--ink);
+  outline:4px solid var(--accent);outline-offset:2px}
+.swatch:focus-visible{outline:4px solid var(--accent);outline-offset:2px}
+#pct{font-family:var(--util);font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+.card{
+  background:#fff;border:3px solid var(--ink);border-radius:18px;padding:18px 20px 22px;
+  box-shadow:0 12px 0 rgba(22,32,45,.13);display:flex;flex-direction:column;align-items:center;gap:12px;
+  max-width:330px;width:100%;
+}
+.mini{display:grid;gap:1px;background:var(--ink);padding:3px;border-radius:6px}
+.mini i{aspect-ratio:1;display:block}
+.cardname{font-family:var(--disp);font-weight:600;font-size:26px;letter-spacing:.08em;margin:0}
+.dashed{border-top:2.5px dashed #C2D2DC;width:100%}
+.deets{display:flex;flex-direction:column;gap:8px;width:100%;margin:0}
+.deet{display:flex;justify-content:space-between;gap:14px;align-items:baseline}
+.deet dt{font-family:var(--util);font-weight:700;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-2);margin:0}
+.deet dd{font-family:var(--disp);font-weight:600;font-size:15px;margin:0;text-align:right}
+
+#askArea{position:relative;width:100%;max-width:400px;height:196px}
+#yesBtn{position:absolute;left:50%;top:10px;transform:translateX(-50%);font-size:27px;padding:19px 46px;
+  border-radius:16px;box-shadow:0 6px 0 var(--ink)}
+#yesBtn:active{transform:translateX(-50%) translateY(6px);box-shadow:0 0 0 var(--ink)}
+#noBtn{position:absolute;left:50%;top:118px;transform:translateX(-50%);font-size:15px;padding:11px 22px;
+  transition:left .35s cubic-bezier(.34,1.56,.64,1),top .35s cubic-bezier(.34,1.56,.64,1)}
+.days{display:flex;gap:12px;width:100%;max-width:400px}
+.days .btn{flex:1;font-size:21px;padding:24px 8px}
+
+@media (prefers-reduced-motion:reduce){
+  #world{transition:none}
+  #noBtn{transition:none}
+  #stamp.hit{animation:none;opacity:1;transform:rotate(-16deg) scale(1)}
+}
+@media (max-height:640px){:root{--hud:min(200px,40dvh)}}
+</style>
+
+<div id="app">
+  <div id="viewport">
+    <div id="world">
+
+      <!-- ============ 1. ANTARCTICA ============ -->
+      <section class="scene" id="scAnt" style="left:0px;top:0px;transform:rotate(-2deg)">
+        <svg class="art" viewBox="0 0 1000 700" role="img" aria-label="Cartoon Antarctica with penguins on the ice">
+          <rect width="1000" height="700" fill="#BFE0F2"/>
+          <circle cx="828" cy="128" r="52" fill="#FFF3D6"/>
+          <path d="M0 300 L150 190 L268 300 Z" fill="#EAF5FC"/>
+          <path d="M150 190 L268 300 L150 300 Z" fill="#D2E8F6"/>
+          <path d="M300 300 L470 150 L640 300 Z" fill="#EAF5FC"/>
+          <path d="M470 150 L640 300 L470 300 Z" fill="#D2E8F6"/>
+          <path d="M690 300 L810 205 L930 300 Z" fill="#EAF5FC"/>
+          <path d="M810 205 L930 300 L810 300 Z" fill="#D2E8F6"/>
+          <rect y="300" width="1000" height="120" fill="#5FA8CE"/>
+          <path d="M0 330 q40 -14 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 v22 H0 Z" fill="#7CBEDD"/>
+          <path d="M0 420 q120 -46 260 -30 q150 18 300 -6 q170 -28 440 22 v294 H0 Z" fill="#FFFFFF"/>
+          <path d="M0 520 q180 -30 340 4 q170 36 330 -12 q160 -34 330 12 v176 H0 Z" fill="#EDF6FB"/>
+          <ellipse cx="500" cy="646" rx="330" ry="20" fill="#DCEDF6"/>
+          <g transform="translate(392,404) scale(1.5)"><use href="#peng" width="60" height="90"/></g>
+          <g transform="translate(272,452) scale(1.15)"><use href="#peng" width="60" height="90"/></g>
+          <g transform="translate(560,448) scale(1.24)"><use href="#peng" width="60" height="90"/></g>
+          <g transform="translate(676,470) scale(.98)"><use href="#peng" width="60" height="90"/></g>
+        </svg>
+        <div class="tag">Antarctica</div>
+        <button class="egg" data-egg="0" type="button" aria-label="Something is buried in the snow"
+                style="left:82%;top:82%;width:5.6%;height:8%">
+          <svg viewBox="0 0 40 60"><rect x="9" y="10" width="22" height="42" rx="5" fill="#C7472F" stroke="#16202D" stroke-width="3"/><rect x="9" y="24" width="22" height="12" fill="#F4EFE2"/><ellipse cx="20" cy="10" rx="11" ry="4" fill="#D9DEE2" stroke="#16202D" stroke-width="3"/></svg>
+        </button>
+      </section>
+
+      <!-- ============ 2. TURKS & CAICOS ============ -->
+      <section class="scene" id="scBeach" style="left:2400px;top:800px;transform:rotate(5deg)">
+        <svg class="art" viewBox="0 0 1000 700" role="img" aria-label="Cartoon tropical beach with a cooler of beer">
+          <rect width="1000" height="700" fill="#FFD8A3"/>
+          <circle cx="180" cy="130" r="66" fill="#FFF0C2"/>
+          <circle cx="180" cy="130" r="50" fill="#FFC94D"/>
+          <ellipse cx="700" cy="112" rx="86" ry="30" fill="#FFF6E4"/>
+          <ellipse cx="770" cy="128" rx="62" ry="24" fill="#FFF6E4"/>
+          <rect y="248" width="1000" height="150" fill="#2FB6C0"/>
+          <rect y="248" width="1000" height="42" fill="#5FD3D6"/>
+          <path d="M0 380 q56 -20 112 0 t112 0 t112 0 t112 0 t112 0 t112 0 t112 0 t112 0 v26 H0 Z" fill="#8FE4E2"/>
+          <path d="M0 400 q170 -30 340 6 q180 38 330 -8 q160 -30 330 14 v288 H0 Z" fill="#F6DFB0"/>
+          <path d="M0 470 q200 -26 400 10 q190 34 340 -6 q140 -26 260 8 v218 H0 Z" fill="#FAEBCC"/>
+          <rect x="118" y="368" width="17" height="200" rx="8" fill="#9A6B44"/>
+          <path d="M126 372 q-84 -34 -122 8 q66 -8 118 24 Z" fill="#3FA35F"/>
+          <path d="M126 372 q80 -42 126 4 q-70 -12 -120 26 Z" fill="#4FBA6C"/>
+          <path d="M126 372 q-58 -70 -18 -112 q22 62 40 104 Z" fill="#358E52"/>
+          <path d="M126 372 q66 -62 116 -34 q-70 6 -108 44 Z" fill="#3FA35F"/>
+          <!-- cooler with two beers, centred near 640,470 -->
+          <g transform="translate(520,392)">
+            <rect x="0" y="88" width="248" height="130" rx="16" fill="#EF4E37" stroke="#16202D" stroke-width="6"/>
+            <rect x="-12" y="70" width="272" height="34" rx="14" fill="#FF7A63" stroke="#16202D" stroke-width="6"/>
+            <rect x="96" y="120" width="56" height="66" rx="8" fill="#FFD9D1"/>
+            <g transform="translate(28,-14)">
+              <rect x="0" y="18" width="44" height="94" rx="10" fill="#E8C766" stroke="#16202D" stroke-width="6"/>
+              <rect x="12" y="-4" width="20" height="30" rx="5" fill="#E8C766" stroke="#16202D" stroke-width="6"/>
+              <rect x="0" y="50" width="44" height="30" fill="#F4F0E4" stroke="#16202D" stroke-width="5"/>
+            </g>
+            <g transform="translate(174,-6)">
+              <rect x="0" y="18" width="44" height="94" rx="10" fill="#7FA8D8" stroke="#16202D" stroke-width="6"/>
+              <rect x="12" y="-4" width="20" height="30" rx="5" fill="#7FA8D8" stroke="#16202D" stroke-width="6"/>
+              <rect x="0" y="50" width="44" height="30" fill="#F4F0E4" stroke="#16202D" stroke-width="5"/>
+            </g>
+            <path d="M6 96 q22 -16 44 0 t44 0 t44 0 t44 0 t44 0" stroke="#FFFFFF" stroke-width="7" fill="none" stroke-linecap="round" opacity=".55"/>
+          </g>
+        </svg>
+        <div class="tag">Turks &amp; Caicos</div>
+        <button class="egg" data-egg="1" type="button" aria-label="Someone is hiding under the palm tree"
+                style="left:6%;top:74%;width:6.4%;height:9.2%">
+          <svg viewBox="0 0 40 60"><g transform="translate(-1,0) scale(.66)"><use href="#peng" width="60" height="90"/></g></svg>
+        </button>
+      </section>
+
+      <!-- ============ 3. THE DENTIST ============ -->
+      <section class="scene" id="scDent" style="left:300px;top:2000px;transform:rotate(-6deg)">
+        <svg class="art" viewBox="0 0 1000 700" role="img" aria-label="Cartoon dentist office with a patient in the chair">
+          <rect width="1000" height="700" fill="#DCEFE7"/>
+          <rect y="470" width="1000" height="230" fill="#C6E0D6"/>
+          <rect x="0" y="462" width="1000" height="12" fill="#A9CCC0"/>
+          <rect x="60" y="92" width="220" height="150" rx="12" fill="#EFF8F4" stroke="#16202D" stroke-width="6"/>
+          <path d="M96 210 l40 -60 l34 42 l30 -34 l44 62 Z" fill="#9AD3B8"/>
+          <circle cx="228" cy="132" r="18" fill="#FFD96B"/>
+          <!-- lamp -->
+          <rect x="742" y="0" width="14" height="130" fill="#8FA8A2"/>
+          <path d="M660 128 h176 l-40 74 h-96 Z" fill="#F2F6F5" stroke="#16202D" stroke-width="6"/>
+          <path d="M700 204 h96 l72 130 h-240 Z" fill="#FFF2BE" opacity=".72"/>
+          <!-- chair -->
+          <rect x="430" y="560" width="34" height="96" fill="#8FA8A2"/>
+          <rect x="360" y="644" width="180" height="22" rx="10" fill="#8FA8A2"/>
+          <path d="M300 470 q-16 -134 92 -156 l260 -54 q52 -10 62 34 l10 46 q10 44 -42 56 l-282 62 Z" fill="#5FB2C4" stroke="#16202D" stroke-width="6"/>
+          <rect x="286" y="452" width="360" height="66" rx="24" fill="#6FC2D2" stroke="#16202D" stroke-width="6"/>
+          <rect x="590" y="472" width="230" height="60" rx="24" fill="#5FB2C4" stroke="#16202D" stroke-width="6"/>
+          <!-- patient -->
+          <g transform="translate(392,282)">
+            <rect x="72" y="118" width="150" height="70" rx="26" fill="#F0F4F3" stroke="#16202D" stroke-width="6"/>
+            <ellipse cx="86" cy="86" rx="76" ry="70" fill="#F6CBA6" stroke="#16202D" stroke-width="6"/>
+            <ellipse cx="30" cy="104" rx="26" ry="24" fill="#F0B48A"/>
+            <ellipse cx="142" cy="104" rx="26" ry="24" fill="#F0B48A"/>
+            <path d="M18 46 q28 -34 74 -30 q46 4 66 34 q-40 -16 -76 -12 q-38 4 -64 8 Z" fill="#3B2C25"/>
+            <path d="M46 74 q14 -10 28 0" stroke="#16202D" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <path d="M104 74 q14 -10 28 0" stroke="#16202D" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <ellipse cx="86" cy="116" rx="20" ry="16" fill="#16202D"/>
+            <rect x="6" y="150" width="164" height="18" rx="9" fill="#EFF3F2" stroke="#16202D" stroke-width="5"/>
+          </g>
+          <!-- tray of four teeth -->
+          <g transform="translate(686,392)">
+            <rect x="0" y="60" width="216" height="26" rx="12" fill="#C9D6DB" stroke="#16202D" stroke-width="6"/>
+            <rect x="94" y="86" width="16" height="90" fill="#8FA8A2"/>
+            <rect x="58" y="176" width="90" height="16" rx="8" fill="#8FA8A2"/>
+            <g fill="#FFFFFF" stroke="#16202D" stroke-width="5">
+              <path d="M18 56 q-8 -34 14 -34 q22 0 14 34 q-4 12 -14 12 q-10 0 -14 -12 Z"/>
+              <path d="M66 56 q-8 -34 14 -34 q22 0 14 34 q-4 12 -14 12 q-10 0 -14 -12 Z"/>
+              <path d="M114 56 q-8 -34 14 -34 q22 0 14 34 q-4 12 -14 12 q-10 0 -14 -12 Z"/>
+              <path d="M162 56 q-8 -34 14 -34 q22 0 14 34 q-4 12 -14 12 q-10 0 -14 -12 Z"/>
+            </g>
+          </g>
+        </svg>
+        <div class="tag">The Dentist</div>
+        <button class="egg" data-egg="2" type="button" aria-label="Something rolled under the chair"
+                style="left:24%;top:88%;width:4.6%;height:6.6%">
+          <svg viewBox="0 0 40 40"><path d="M6 26 q-6 -24 14 -24 q20 0 14 24 q-4 10 -14 10 q-10 0 -14 -10 Z" fill="#FFFFFF" stroke="#16202D" stroke-width="4"/></svg>
+        </button>
+      </section>
+
+      <!-- ============ 4. RATTLESNAKE POINT ============ -->
+      <section class="scene" id="scTrail" style="left:2700px;top:2700px;transform:rotate(3deg)">
+        <svg class="art" viewBox="0 0 1000 700" role="img" aria-label="Cartoon cliff lookout with a card resting on a rock">
+          <rect width="1000" height="700" fill="#A9DAEC"/>
+          <ellipse cx="150" cy="96" rx="76" ry="28" fill="#F2FAFD"/>
+          <ellipse cx="222" cy="112" rx="54" ry="22" fill="#F2FAFD"/>
+          <ellipse cx="820" cy="76" rx="66" ry="24" fill="#F2FAFD"/>
+          <path d="M0 300 L170 176 L330 300 Z" fill="#9DBBC6"/>
+          <path d="M240 300 L430 158 L620 300 Z" fill="#8AA9B6"/>
+          <path d="M0 336 q140 -22 300 6 q180 32 360 -8 q170 -34 340 16 v90 H0 Z" fill="#4E8C58"/>
+          <path d="M0 400 q160 -18 320 10 q190 32 350 -10 q170 -34 330 20 v280 H0 Z" fill="#D9A468"/>
+          <path d="M0 452 h1000 v248 H0 Z" fill="#C79055"/>
+          <g fill="#B67F47">
+            <rect y="452" width="1000" height="10"/>
+            <rect y="528" width="1000" height="8"/>
+            <rect y="604" width="1000" height="8"/>
+          </g>
+          <g fill="#3F7A4B">
+            <path d="M84 400 l40 -96 l40 96 Z"/><path d="M96 356 l28 -68 l28 68 Z"/>
+            <path d="M186 406 l34 -80 l34 80 Z"/>
+            <path d="M834 398 l40 -94 l40 94 Z"/><path d="M846 354 l28 -66 l28 66 Z"/>
+          </g>
+          <rect x="116" y="396" width="16" height="34" fill="#6B4A2E"/>
+          <rect x="212" y="402" width="14" height="30" fill="#6B4A2E"/>
+          <rect x="866" y="394" width="16" height="34" fill="#6B4A2E"/>
+          <!-- rattlesnake -->
+          <g transform="translate(150,470)">
+            <path d="M0 120 q54 -46 106 -6 q52 40 104 -6 q48 -44 96 4"
+                  stroke="#C7A03A" stroke-width="30" fill="none" stroke-linecap="round"/>
+            <path d="M0 120 q54 -46 106 -6 q52 40 104 -6 q48 -44 96 4"
+                  stroke="#8E6F1E" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="4 34"/>
+            <circle cx="306" cy="118" r="22" fill="#C7A03A" stroke="#16202D" stroke-width="5"/>
+            <circle cx="314" cy="112" r="4.5" fill="#16202D"/>
+            <path d="M326 120 l24 0 m0 0 l10 -8 m-10 8 l10 8" stroke="#EF4E37" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M-6 118 l-24 -12 l4 26 Z" fill="#E4D7A8" stroke="#16202D" stroke-width="4"/>
+          </g>
+          <!-- rock + card : world focus target -->
+          <g transform="translate(600,440)">
+            <path d="M28 178 q-46 -8 -30 -60 q12 -40 62 -46 q46 -46 108 -14 q66 -32 92 26 q46 8 34 60 q-12 38 -66 34 Z"
+                  fill="#9A9E9B" stroke="#16202D" stroke-width="6"/>
+            <path d="M40 132 q60 -26 128 -8 q60 16 118 -4" stroke="#828684" stroke-width="8" fill="none"/>
+            <g transform="translate(52,26) rotate(-7)">
+              <rect x="0" y="0" width="188" height="130" rx="10" fill="#FFFFFF" stroke="#16202D" stroke-width="6"/>
+              <rect x="16" y="16" width="156" height="76" rx="6" fill="#EAF2F8" stroke="#C2D2DC" stroke-width="4"/>
+              <g fill="#C2D2DC">
+                <rect x="60" y="102" width="68" height="8" rx="4"/>
+              </g>
+              <text x="94" y="66" text-anchor="middle" font-family="Archivo, Arial, sans-serif"
+                    font-size="17" font-weight="700" fill="#9BAAB6" letter-spacing="2">?</text>
+            </g>
+          </g>
+        </svg>
+        <div class="tag">Rattlesnake Point</div>
+        <button class="egg" data-egg="3" type="button" aria-label="Someone made it to the lookout"
+                style="left:88%;top:60%;width:5.4%;height:7.8%">
+          <svg viewBox="0 0 40 60"><g transform="translate(-1,0) scale(.66)"><use href="#peng" width="60" height="90"/></g></svg>
+        </button>
+      </section>
+    </div>
+
+    <!-- ---------- colour by number (covers the map, not the HUD) ---------- -->
+    <div class="panel" id="paint">
+      <div id="paintwrap">
+        <p class="eyebrow" id="paintEyebrow">Inside the card</p>
+        <h1 id="paintTitle" style="font-size:clamp(20px,5.4vw,26px)">Colour by number</h1>
+        <div class="palette" id="palette"></div>
+        <div id="grid" role="group" aria-label="Colour by number grid"></div>
+        <p id="pct">0% filled</p>
+        <button class="link" id="autoFill" type="button">Finish it for me</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- HUD ---------- -->
+  <div id="hud">
+    <div id="stamp">Cleared</div>
+    <div class="hudtop">
+      <div class="meta"><span id="stopLabel">Clue 01 / 06</span><span class="pips" id="pips"></span></div>
+      <div class="found">
+        <svg viewBox="0 0 40 60" aria-hidden="true"><g transform="scale(.66)"><use href="#peng" width="60" height="90"/></g></svg>
+        <span id="foundLabel">0 / 4</span>
+      </div>
+    </div>
+    <p class="clue" id="clue">Loading…</p>
+    <form class="row" id="answerForm">
+      <input id="answer" type="text" placeholder="type your answer" autocomplete="off"
+             autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"
+             aria-label="Your answer">
+      <button class="btn" type="submit">Go</button>
+    </form>
+    <div class="choices" id="choices" role="group" aria-label="Pick one"></div>
+    <p class="say" id="say" role="status" aria-live="polite"></p>
+    <div class="helpers">
+      <button class="link" id="hintBtn" type="button">Need a hint?</button>
+      <button class="link" id="skipBtn" type="button">Just let me through</button>
+    </div>
+  </div>
+
+  <!-- ---------- name gate ---------- -->
+  <div class="panel open" id="gate">
+    <div class="gatecard">
+      <svg class="big" viewBox="0 0 40 60" aria-hidden="true"><g transform="scale(.66)"><use href="#peng" width="60" height="90"/></g></svg>
+      <p class="eyebrow">Before we go anywhere</p>
+      <h1>Who are you?</h1>
+      <form class="row" id="gateForm" style="width:100%;flex-direction:column">
+        <input id="gateName" type="text" placeholder="your name" autocomplete="off"
+               autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go"
+               aria-label="Your name">
+        <button class="btn wide" type="submit" style="margin-top:10px">That's me</button>
+      </form>
+      <p id="gateSay" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- ---------- the ask ---------- -->
+  <div class="panel" id="ask">
+    <svg class="big" viewBox="0 0 40 60" aria-hidden="true" style="width:96px;height:96px"><g transform="scale(.66)"><use href="#peng" width="60" height="90"/></g></svg>
+    <p class="eyebrow">Okay. Real question.</p>
+    <h1 id="askLine">Will you go on a hike with me?</h1>
+    <div id="askArea">
+      <button class="btn" id="yesBtn" type="button">Yes</button>
+      <button class="btn ghost" id="noBtn" type="button">no</button>
+    </div>
+  </div>
+
+  <!-- ---------- day picker ---------- -->
+  <div class="panel" id="days">
+    <p class="eyebrow">One more thing</p>
+    <h1>Thursday or Friday?</h1>
+    <p>You have my schedule. Pick whichever one is easier for you.</p>
+    <div class="days">
+      <button class="btn" data-day="Thursday" type="button">Thursday</button>
+      <button class="btn" data-day="Friday" type="button">Friday</button>
+    </div>
+  </div>
+
+  <!-- ---------- finale ---------- -->
+  <div class="panel" id="done">
+    <h1 id="doneTitle">See you Thursday.</h1>
+    <div class="card">
+      <div class="mini" id="miniArt" aria-label="The penguin you coloured" role="img"></div>
+      <p class="cardname" id="doneName">GILLIAN</p>
+      <div class="dashed"></div>
+      <dl class="deets">
+        <div class="deet"><dt>Where</dt><dd>Rattlesnake Point</dd></div>
+        <div class="deet"><dt>When</dt><dd id="doneDay">Thursday</dd></div>
+        <div class="deet"><dt>Before</dt><dd>One Miller High Life,<br>one Kronenbourg Blanc</dd></div>
+        <div class="deet"><dt>Bringing</dt><dd>The real card,<br>drawn by hand</dd></div>
+      </dl>
+    </div>
+    <p id="doneNote">Now go text me your answer so I know this thing actually worked.</p>
+    <p class="eyebrow" id="bonus" style="display:none"></p>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="peng" viewBox="0 0 60 90">
+      <ellipse cx="30" cy="86" rx="20" ry="4" fill="#16202D" opacity=".14"/>
+      <path d="M30 6 q22 0 22 30 v26 q0 22 -22 22 t-22 -22 V36 q0 -30 22 -30 Z" fill="#22303F"/>
+      <path d="M30 30 q13 0 13 20 v10 q0 16 -13 16 t-13 -16 V50 q0 -20 13 -20 Z" fill="#FDFDFB"/>
+      <path d="M9 40 q-6 16 0 30 q6 -6 6 -18 Z" fill="#1A2734"/>
+      <path d="M51 40 q6 16 0 30 q-6 -6 -6 -18 Z" fill="#1A2734"/>
+      <circle cx="23" cy="28" r="3.4" fill="#FDFDFB"/><circle cx="37" cy="28" r="3.4" fill="#FDFDFB"/>
+      <circle cx="23.6" cy="28.6" r="1.9" fill="#16202D"/><circle cx="37.6" cy="28.6" r="1.9" fill="#16202D"/>
+      <path d="M30 34 l-6 5 h12 Z" fill="#F2A03D"/>
+      <path d="M22 84 q-6 0 -6 -3 q0 -3 8 -3 h4 v6 Z" fill="#F2A03D"/>
+      <path d="M38 84 q6 0 6 -3 q0 -3 -8 -3 h-4 v6 Z" fill="#F2A03D"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script>
+(function () {
+  "use strict";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------------- persistence ---------------- */
+  var KEY = "gh-v1";
+  var S = { name: "", stop: 0, eggs: [], painted: false, day: "", cells: {} };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) {
+      var p = JSON.parse(raw);
+      if (p && typeof p === "object") {
+        S.name = typeof p.name === "string" ? p.name : "";
+        S.stop = typeof p.stop === "number" && p.stop >= 0 && p.stop <= 6 ? p.stop : 0;
+        S.eggs = Array.isArray(p.eggs) ? p.eggs : [];
+        S.painted = p.painted === true;
+        S.day = typeof p.day === "string" ? p.day : "";
+        S.cells = p.cells && typeof p.cells === "object" ? p.cells : {};
+      }
+    }
+  } catch (e) { /* blocked storage: just start fresh */ }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  /* ---------------- camera ---------------- */
+  var SCENES = {
+    ant:   { left: 0,    top: 0,    rot: -2 },
+    beach: { left: 2400, top: 800,  rot: 5 },
+    dent:  { left: 300,  top: 2000, rot: -6 },
+    trail: { left: 2700, top: 2700, rot: 3 }
+  };
+  function aim(key, lx, ly, w, h) {
+    var s = SCENES[key];
+    var scx = s.left + 500, scy = s.top + 350;
+    var dx = s.left + lx - scx, dy = s.top + ly - scy;
+    var a = s.rot * Math.PI / 180, c = Math.cos(a), n = Math.sin(a);
+    return { cx: scx + dx * c - dy * n, cy: scy + dx * n + dy * c, w: w, h: h, rot: s.rot };
+  }
+  var OVERVIEW = { cx: 1850, cy: 1700, w: 4600, h: 3700, rot: 0 };
+  var world = $("world"), viewport = $("viewport");
+  var camera = OVERVIEW;
+
+  function applyCamera(t) {
+    camera = t;
+    var vw = viewport.clientWidth, vh = viewport.clientHeight;
+    if (!vw || !vh) return;
+    var s = Math.min(vw / t.w, vh / t.h) * 0.9;
+    world.style.transform =
+      "translate(" + (vw / 2) + "px," + (vh / 2) + "px) rotate(" + (-t.rot) + "deg) scale(" + s +
+      ") translate(" + (-t.cx) + "px," + (-t.cy) + "px)";
+  }
+  window.addEventListener("resize", function () {
+    var prev = world.style.transition;
+    world.style.transition = "none";
+    applyCamera(camera);
+    void world.offsetWidth;
+    world.style.transition = prev;
+  });
+
+  /* ---------------- the clues ---------------- */
+  function norm(v) {
+    return String(v).toLowerCase().normalize("NFD")
+      .replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  var STOPS = [
+    {
+      aim: aim("ant", 500, 350, 1060, 760),
+      clue: "Everyone here is wearing the exact same thing. What is it?",
+      ph: "what are they wearing?",
+      ok: function (n) { return /tux|suit|black and white|dinner jacket|bow ?tie/.test(n); },
+      hint: "It is black. It is white. You would wear it to a wedding.",
+      no: ["Not quite. Look at what they have all got on.",
+           "Warmer. Think formalwear.",
+           "They are all dressed for a wedding nobody invited them to."],
+      stamp: "Cleared",
+      after: "Correct. Hold that thought."
+    },
+    {
+      aim: aim("beach", 500, 350, 1060, 760),
+      clue: "Hard left turn. Bar is open, it is 29 degrees. What are you ordering?",
+      choices: ["Coors Banquet", "Miller High Life", "Pabst Blue Ribbon", "Busch Light"],
+      correct: 1,
+      hint: "It calls itself the champagne of beers.",
+      no: ["Not that one. I have been paying attention.",
+           "Nope. Cheaper, and you are prouder of it than that.",
+           "Wrong. Yours has a fancier nickname."],
+      stamp: "Correct",
+      after: "The champagne of beers. Obviously."
+    },
+    {
+      aim: aim("beach", 650, 500, 470, 400),
+      clue: "And the one I keep telling you that you HAVE to try?",
+      choices: ["Hoegaarden", "Stella Artois", "Kronenbourg Blanc", "Blue Moon"],
+      correct: 2,
+      hint: "French. Starts with a K. Ends with me being right.",
+      no: ["That is not the one I will not shut up about.",
+           "Close. Wrong country.",
+           "No. Mine is the one you cannot pronounce."],
+      stamp: "Noted",
+      after: "That one is on me. Non-negotiable."
+    },
+    {
+      aim: aim("dent", 500, 350, 1060, 760),
+      clue: "Completely different question. How many wisdom teeth did I get taken out?",
+      ph: "a number",
+      ok: function (n) { return n === "4" || /\bfour\b/.test(n) || /\b4\b/.test(n); },
+      hint: "They took all of them. How many does a person get?",
+      no: ["Not that many.", "Fewer than that. Or more. But not that.",
+           "It was all of them. That is the number."],
+      stamp: "Ouch",
+      after: "All four. I sounded ridiculous for a week."
+    },
+    {
+      aim: aim("trail", 500, 350, 1060, 760),
+      clue: "Last stop. You already know this place. Where are we going?",
+      ph: "the lookout",
+      ok: function (n) { return /rattle|snake ?point|rattlesnak/.test(n); },
+      hint: "It is a lookout. There is a snake in the name.",
+      no: ["Not there. You know this one.",
+           "Close, but that is not the lookout.",
+           "It has a genuinely alarming name for a very nice trail."],
+      stamp: "Arrived",
+      after: "There it is. Now look at the rock."
+    },
+    {
+      aim: aim("trail", 746, 531, 330, 260),
+      clue: "There is a card sitting on the rock. Fill it in.",
+      ph: "what is it?",
+      ok: function (n) { return /peng/.test(n); },
+      hint: "Black and white. Cannot fly. Wearing a tuxedo.",
+      no: ["Look at it again.", "That is very much not what that is.",
+           "It is the thing this entire website has been about."],
+      stamp: "For you",
+      after: ""
+    }
+  ];
+
+  /* ---------------- HUD ---------------- */
+  var clueEl = $("clue"), sayEl = $("say"), ansEl = $("answer"), formEl = $("answerForm");
+  var hintBtn = $("hintBtn"), skipBtn = $("skipBtn"), stampEl = $("stamp");
+  var stopLabel = $("stopLabel"), pipsEl = $("pips"), foundLabel = $("foundLabel");
+  var choicesEl = $("choices");
+  var wrongCount = 0, hintTimer = null, skipTimer = null;
+
+  for (var i = 0; i < STOPS.length; i++) {
+    pipsEl.appendChild(document.createElement("span")).className = "pip";
+  }
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+  function say(msg, kind) {
+    sayEl.textContent = msg || "";
+    sayEl.className = "say" + (kind ? " " + kind : "");
+  }
+  function setLinks(showHint, showSkip) {
+    hintBtn.classList.toggle("show", !!showHint);
+    skipBtn.classList.toggle("show", !!showSkip);
+  }
+  function armTimers() {
+    clearTimeout(hintTimer); clearTimeout(skipTimer);
+    setLinks(false, false);
+    hintTimer = setTimeout(function () { hintBtn.classList.add("show"); }, 20000);
+    skipTimer = setTimeout(function () { skipBtn.classList.add("show"); }, 75000);
+  }
+
+  function renderStop() {
+    var idx = S.stop;
+    var pipEls = pipsEl.children;
+    for (var k = 0; k < pipEls.length; k++) {
+      pipEls[k].className = "pip" + (k < idx ? " on" : k === idx ? " now" : "");
+    }
+    stopLabel.textContent = "Clue " + pad(Math.min(idx + 1, STOPS.length)) + " / " + pad(STOPS.length);
+    if (idx >= STOPS.length) return;
+    var st = STOPS[idx];
+    clueEl.textContent = st.clue;
+    ansEl.value = "";
+    ansEl.placeholder = st.ph || "type your answer";
+    wrongCount = 0;
+    say("");
+    choicesEl.classList.remove("on");
+    choicesEl.innerHTML = "";
+    applyCamera(st.aim);
+    if (idx === 5) {
+      openPaint();
+      clearTimeout(hintTimer); clearTimeout(skipTimer);
+      if (S.painted) {
+        clueEl.textContent = "So. What did you just draw?";
+        ansEl.placeholder = "what is it?";
+        formEl.style.display = "flex";
+        armTimers();
+      } else {
+        formEl.style.display = "none";
+        setLinks(false, true);
+      }
+    } else {
+      $("paint").classList.remove("open");
+      $("hud").classList.remove("slim");
+      if (st.choices) { formEl.style.display = "none"; buildChoices(st); }
+      else { formEl.style.display = "flex"; }
+      armTimers();
+    }
+  }
+
+  /* the two beer stops are multiple choice: the names are a nuisance to spell */
+  function buildChoices(st) {
+    st.choices.forEach(function (label, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "choice";
+      b.textContent = label;
+      b.addEventListener("click", function () {
+        if (i === st.correct) {
+          b.classList.add("right");
+          choicesEl.classList.add("locked");
+          var all = choicesEl.querySelectorAll(".choice");
+          for (var j = 0; j < all.length; j++) all[j].style.pointerEvents = "none";
+          solved();
+        } else {
+          b.classList.add("wrong");
+          say(st.no[wrongCount % st.no.length], "");
+          wrongCount += 1;
+          if (wrongCount >= 2) hintBtn.classList.add("show");
+        }
+      });
+      choicesEl.appendChild(b);
+    });
+    choicesEl.classList.add("on");
+  }
+
+  function solved() {
+    var st = STOPS[S.stop];
+    stampEl.textContent = st.stamp;
+    stampEl.classList.remove("hit");
+    void stampEl.offsetWidth;
+    stampEl.classList.add("hit");
+    clearTimeout(hintTimer); clearTimeout(skipTimer);
+    setLinks(false, false);
+    say(st.after, "good");
+    ansEl.blur();
+    S.stop += 1; save();
+    setTimeout(function () {
+      stampEl.classList.remove("hit");
+      stampEl.style.opacity = "0";
+      if (S.stop >= STOPS.length) { finishHunt(); } else { renderStop(); }
+    }, reduce ? 300 : 1150);
+  }
+
+  formEl.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (S.stop >= STOPS.length) return;
+    var st = STOPS[S.stop];
+    if (st.choices) return;
+    var n = norm(ansEl.value);
+    if (!n) { say("You have to type something.", "note"); return; }
+    if (st.ok(n)) { solved(); return; }
+    say(st.no[wrongCount % st.no.length], "");
+    wrongCount += 1;
+    if (wrongCount >= 2) hintBtn.classList.add("show");
+    if (wrongCount >= 4) skipBtn.classList.add("show");
+    ansEl.select();
+  });
+
+  hintBtn.addEventListener("click", function () {
+    if (S.stop < STOPS.length) say(STOPS[S.stop].hint, "note");
+  });
+  skipBtn.addEventListener("click", function () {
+    if (S.stop >= STOPS.length) return;
+    if (S.stop === 5 && !S.painted) { autoFillGrid(); return; }
+    say("Fine. Moving on.", "note");
+    S.stop += 1; save();
+    setTimeout(function () {
+      if (S.stop >= STOPS.length) finishHunt(); else renderStop();
+    }, 450);
+  });
+
+  /* ---------------- hidden penguins ---------------- */
+  var EGG_LINES = [
+    "A beer, buried in the snow. Found it.",
+    "One lost penguin, on holiday.",
+    "That tooth has been under there since June.",
+    "Somebody beat us to the lookout."
+  ];
+  function renderEggs() {
+    var eggs = document.querySelectorAll(".egg");
+    for (var i = 0; i < eggs.length; i++) {
+      if (S.eggs.indexOf(Number(eggs[i].getAttribute("data-egg"))) !== -1) eggs[i].classList.add("got");
+    }
+    foundLabel.textContent = S.eggs.length + " / 4";
+  }
+  document.addEventListener("click", function (ev) {
+    var t = ev.target;
+    var btn = t && t.closest ? t.closest(".egg") : null;
+    if (!btn) return;
+    var id = Number(btn.getAttribute("data-egg"));
+    if (S.eggs.indexOf(id) !== -1) return;
+    S.eggs.push(id); save();
+    btn.classList.add("got");
+    foundLabel.textContent = S.eggs.length + " / 4";
+    say(EGG_LINES[id] || "Found one.", "note");
+  });
+
+  /* ---------------- colour by number ---------------- */
+  /* 8 x 10 rather than 10 x 12: fewer, fatter squares are far easier to hit
+     accurately with a thumb */
+  var MAP = ["11111111","11222211","12222221","12322321","12244221",
+             "12222221","22333322","22333322","12333321","11444411"];
+  var COLS = { "1": "#EAF2F8", "2": "#22303F", "3": "#FDFDFB", "4": "#F2A03D" };
+  var COLW = MAP[0].length, ROWS = MAP.length, TOTAL = COLW * ROWS;
+  var gridEl = $("grid"), paletteEl = $("palette"), pctEl = $("pct");
+  var pick = "1", cells = [], built = false, painting = false;
+
+  function buildGrid() {
+    if (built) return;
+    built = true;
+    gridEl.style.gridTemplateColumns = "repeat(" + COLW + ",1fr)";
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLW; c++) {
+        var d = document.createElement("div");
+        d.className = "cell";
+        d.setAttribute("data-i", String(r * COLW + c));
+        d.textContent = MAP[r][c];
+        /* a real listener on the square itself: a tap never depends on
+           hit-testing a coordinate, which is what was failing on phones */
+        d.addEventListener("click", function () {
+          paintCell(Number(this.getAttribute("data-i")), pick);
+          tally();
+        });
+        gridEl.appendChild(d);
+        cells.push(d);
+      }
+    }
+    ["1", "2", "3", "4"].forEach(function (num) {
+      var b = document.createElement("button");
+      b.className = "swatch";
+      b.type = "button";
+      b.style.background = COLS[num];
+      b.textContent = num;
+      b.style.color = num === "2" ? "#FDFDFB" : "#16202D";
+      b.setAttribute("aria-pressed", num === pick ? "true" : "false");
+      b.setAttribute("aria-label", "Colour number " + num);
+      b.addEventListener("click", function () {
+        pick = num;
+        var all = paletteEl.querySelectorAll(".swatch");
+        for (var j = 0; j < all.length; j++) {
+          all[j].setAttribute("aria-pressed", all[j].textContent === num ? "true" : "false");
+        }
+      });
+      paletteEl.appendChild(b);
+    });
+    /* drag-to-paint is a bonus on top of the per-square taps; no preventDefault
+       here or the tap's click event never fires */
+    gridEl.addEventListener("pointerdown", function (e) {
+      painting = true;
+      paintAt(e.clientX, e.clientY);
+    });
+    gridEl.addEventListener("pointermove", function (e) {
+      if (painting) paintAt(e.clientX, e.clientY);
+    });
+    var stopPaint = function () { painting = false; };
+    gridEl.addEventListener("pointerup", stopPaint);
+    gridEl.addEventListener("pointercancel", stopPaint);
+    window.addEventListener("pointerup", stopPaint);
+  }
+
+  function paintCell(idx, num, restore) {
+    var d = cells[idx];
+    if (!d) return;
+    /* once a square is the right colour it is set: dragging back over it
+       cannot undo it, and neither can a mis-tap */
+    if (S.cells[idx] && !restore) return;
+    var want = MAP[Math.floor(idx / COLW)][idx % COLW];
+    d.style.background = COLS[num];
+    if (num === want) {
+      d.classList.add("done");
+      S.cells[idx] = num;
+    } else {
+      d.classList.remove("done");
+      d.style.color = num === "2" ? "#FDFDFB" : "#16202D";
+      delete S.cells[idx];
+    }
+  }
+  function paintAt(x, y) {
+    var el = document.elementFromPoint(x, y);
+    if (!el || !el.classList || !el.classList.contains("cell")) return;
+    paintCell(Number(el.getAttribute("data-i")), pick);
+    tally();
+  }
+  function tally() {
+    var n = Object.keys(S.cells).length;
+    pctEl.textContent = Math.round((n / TOTAL) * 100) + "% filled";
+    save();
+    if (n >= TOTAL) completePaint();
+  }
+  function autoFillGrid() {
+    for (var i = 0; i < TOTAL; i++) paintCell(i, MAP[Math.floor(i / COLW)][i % COLW]);
+    tally();
+  }
+  $("autoFill").addEventListener("click", autoFillGrid);
+
+  /* size the grid so the palette and the counter always stay on screen,
+     however short the phone is */
+  function fitGrid() {
+    var panel = $("paint");
+    if (!panel.classList.contains("open")) return;
+    var wrap = $("paintwrap"), kids = wrap.children, other = 0;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i] !== gridEl && kids[i].offsetHeight) other += kids[i].offsetHeight + 11;
+    }
+    var room = panel.clientHeight - 32 - other;
+    var byHeight = (room - 14) * COLW / ROWS;
+    var w = Math.min(344, viewport.clientWidth * 0.88, byHeight);
+    gridEl.style.width = Math.max(150, Math.floor(w)) + "px";
+  }
+  window.addEventListener("resize", fitGrid);
+
+  function openPaint() {
+    buildGrid();
+    for (var i = 0; i < TOTAL; i++) { if (S.cells[i]) paintCell(i, S.cells[i], true); }
+    pctEl.textContent = Math.round((Object.keys(S.cells).length / TOTAL) * 100) + "% filled";
+    $("paint").classList.add("open");
+    if (S.painted) { dressCompletedPaint(); }
+    else {
+      $("hud").classList.add("slim");
+      paletteEl.style.display = "flex";
+      pctEl.style.display = "block";
+      setTimeout(function () { $("autoFill").classList.add("show"); fitGrid(); }, 25000);
+    }
+    requestAnimationFrame(fitGrid);
+  }
+  function dressCompletedPaint() {
+    paletteEl.style.display = "none";
+    pctEl.style.display = "none";
+    $("autoFill").classList.remove("show");
+    $("paintEyebrow").textContent = "The card";
+    $("paintTitle").textContent = "Oh.";
+    $("hud").classList.remove("slim");
+    requestAnimationFrame(fitGrid);
+  }
+  function completePaint() {
+    if (S.painted) return;
+    S.painted = true; save();
+    dressCompletedPaint();
+    clueEl.textContent = "So. What did you just draw?";
+    ansEl.placeholder = "what is it?";
+    formEl.style.display = "flex";
+    say("");
+    armTimers();
+  }
+
+  /* ---------------- the name gate ---------------- */
+  var gate = $("gate"), gateSay = $("gateSay"), gateName = $("gateName");
+  var NEAR = ["jillian","gilian","gillan","gillain","gilliam","gill","gilly","jill","g",
+              "gilllian","gillianne","jullian","gullian","gillion","jilian"];
+  var PUSH = [
+    "...are you sure that is your name?",
+    "Hm. Are you positive?",
+    "This was made for exactly one person, and she knows who she is."
+  ];
+  var tries = 0;
+
+  function enterHunt(greet) {
+    gate.classList.remove("open");
+    renderEggs();
+    renderStop();
+    if (greet) say(greet, "note");
+  }
+
+  $("gateForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var n = norm(gateName.value);
+    if (!n) { gateSay.textContent = "You have to type something."; return; }
+    if (n.indexOf("gillian") === 0) {
+      S.name = "Gillian"; save(); enterHunt("Hi, Gillian."); return;
+    }
+    if (NEAR.indexOf(n) !== -1) {
+      S.name = "Gillian"; save(); enterHunt("Close enough. Hi, Gillian."); return;
+    }
+    if (/^dom/.test(n)) { gateSay.textContent = "...that is my name. Nice try."; return; }
+    tries += 1;
+    if (tries >= 4) { S.name = "Gillian"; save(); enterHunt("Fine. Come in."); return; }
+    gateSay.textContent = PUSH[tries - 1];
+  });
+
+  /* ---------------- the ask ---------------- */
+  var askPanel = $("ask"), noBtn = $("noBtn"), yesBtn = $("yesBtn"), askArea = $("askArea");
+  var dodges = 0;
+
+  function finishHunt() {
+    $("paint").classList.remove("open");
+    $("hud").classList.remove("slim");
+    clueEl.textContent = "That is the card. I am drawing you the real one for the day.";
+    formEl.style.display = "none";
+    setLinks(false, false);
+    clearTimeout(hintTimer); clearTimeout(skipTimer);
+    setTimeout(function () { askPanel.classList.add("open"); }, reduce ? 150 : 950);
+  }
+
+  noBtn.addEventListener("click", function () {
+    if (dodges < 2) {
+      dodges += 1;
+      var w = askArea.clientWidth, h = askArea.clientHeight;
+      noBtn.style.left = (12 + Math.random() * Math.max(1, w - noBtn.offsetWidth - 24)) + "px";
+      noBtn.style.top = (76 + Math.random() * Math.max(1, h - noBtn.offsetHeight - 86)) + "px";
+      noBtn.style.transform = "none";
+      noBtn.textContent = dodges === 1 ? "no" : "still no";
+      return;
+    }
+    askPanel.innerHTML =
+      '<p class="eyebrow">Okay</p>' +
+      '<h1>That is completely fine.</h1>' +
+      '<p>Thank you for telling me straight. I had fun making this either way, and the offer ' +
+      'stands if you ever change your mind.</p>' +
+      '<button class="btn ghost" id="undoNo" type="button">Wait, I misclicked</button>';
+    var undo = $("undoNo");
+    if (undo) undo.addEventListener("click", function () { location.reload(); });
+  });
+
+  yesBtn.addEventListener("click", function () {
+    askPanel.classList.remove("open");
+    $("days").classList.add("open");
+  });
+
+  /* ---------------- day + finale ---------------- */
+  var dayBtns = $("days").querySelectorAll("[data-day]");
+  for (var d = 0; d < dayBtns.length; d++) {
+    dayBtns[d].addEventListener("click", function () {
+      S.day = this.getAttribute("data-day"); save();
+      $("days").classList.remove("open");
+      showFinale();
+    });
+  }
+
+  function showFinale() {
+    var day = S.day || "Thursday";
+    $("doneTitle").textContent = "See you " + day + ".";
+    $("doneDay").textContent = day;
+    $("doneName").textContent = (S.name || "Gillian").toUpperCase();
+    var mini = $("miniArt");
+    if (!mini.childNodes.length) {
+      mini.style.gridTemplateColumns = "repeat(" + COLW + ",1fr)";
+      mini.style.width = "160px";
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLW; c++) {
+          var sq = document.createElement("i");
+          sq.style.background = COLS[MAP[r][c]];
+          mini.appendChild(sq);
+        }
+      }
+    }
+    var bonus = $("bonus");
+    bonus.style.display = "block";
+    bonus.textContent = S.eggs.length >= 4
+      ? "You found all four hidden penguins. Of course you did."
+      : "There were four little penguins hidden back there. You found " + S.eggs.length + ".";
+    $("done").classList.add("open");
+  }
+
+  /* ---------------- boot ---------------- */
+  applyCamera(OVERVIEW);
+  renderEggs();
+  if (S.name) {
+    if (S.day) { gate.classList.remove("open"); renderStop(); showFinale(); }
+    else if (S.stop >= STOPS.length) { gate.classList.remove("open"); renderStop(); finishHunt(); }
+    else { enterHunt("Welcome back."); }
+  }
+  window.addEventListener("load", function () { applyCamera(camera); });
+})();
+</script>
+
+</body>
+</html>

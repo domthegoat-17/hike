@@ -896,6 +896,8 @@ svg.big{width:128px;height:128px;display:block}
     d.style.background = COLS[num];
     if (num === want) {
       d.classList.add("done");
+      d.style.color = "";   /* drop any inline colour from an earlier wrong
+                               guess, or it outranks .done and the number shows */
       S.cells[idx] = num;
     } else {
       d.classList.remove("done");
